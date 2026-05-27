@@ -158,3 +158,205 @@ define(Promise.prototype, Symbol.asyncIterator, async function* iterator () {
 // ─── WeakMap / WeakSet ────────────────────────────────────────────────────────
 // Intentionally NOT patched. Non-iterability is load-bearing for GC semantics.
 // Adding iteration would require retaining all keys — defeats the purpose.
+
+
+/**
+ * oprah-iterator/whatwg
+ * WHATWG API extensions for oprah-iterator.
+ *
+ * Separate module — these APIs may not exist in all environments (Node vs browser).
+ * Each block guards existence before patching.
+ *
+ * Sync iter on streaming types yields Promise<{value, done}> per chunk.
+ * Consumer pattern:
+ *
+ *   for (const pchunk of blob) {
+ *     const { value, done } = await pchunk;
+ *     if (done) break;
+ *     chunks.push(value);
+ *   }
+ */
+
+// ─── Util (local — don't want hard dep on main module internals) ──────────────
+
+function* streamSyncIter(stream) {
+  const reader = stream.getReader();
+  try {
+    while (true) {
+      yield reader.read(); // Promise<{value: Uint8Array, done: boolean}>
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ─── ReadableStream ───────────────────────────────────────────────────────────
+// Async iter: yield chunks directly (already exists in modern browsers — guard).
+// Sync iter: lazy promise-per-chunk via shared util.
+
+if (typeof ReadableStream !== 'undefined') {
+  if (!ReadableStream.prototype[Symbol.asyncIterator]) {
+    define(ReadableStream.prototype, Symbol.asyncIterator, async function* iterator() {
+      const reader = this.getReader();
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) return;
+          yield value;
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    });
+  }
+
+  define(ReadableStream.prototype, Symbol.iterator, function* iterator() {
+    yield* streamSyncIter(this);
+  });
+}
+
+// ─── Blob ─────────────────────────────────────────────────────────────────────
+// Async iter: yield chunks from .stream().
+// Sync iter: lazy promise-per-chunk.
+// File extends Blob — inherits both automatically.
+
+if (typeof Blob !== 'undefined') {
+  define(Blob.prototype, Symbol.asyncIterator, async function* iterator() {
+    const reader = this.stream().getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  });
+
+  define(Blob.prototype, Symbol.iterator, function* iterator() {
+    yield* streamSyncIter(this.stream());
+  });
+}
+
+// ─── Request ──────────────────────────────────────────────────────────────────
+// Sync iter: metadata fields as [k, v] pairs.
+// Async iter: body chunks (consumes body — clone first if needed).
+
+if (typeof Request !== 'undefined') {
+  define(Request.prototype, Symbol.iterator, function* iterator() {
+    yield ['url',         this.url];
+    yield ['method',      this.method];
+    yield ['mode',        this.mode];
+    yield ['credentials', this.credentials];
+    yield ['cache',       this.cache];
+    yield ['redirect',    this.redirect];
+    yield ['referrer',    this.referrer];
+    yield ['headers',     this.headers];
+    yield ['bodyUsed',    this.bodyUsed];
+  });
+
+  define(Request.prototype, Symbol.asyncIterator, async function* iterator() {
+    if (!this.body) return;
+    const reader = this.body.getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  });
+}
+
+// ─── Response ─────────────────────────────────────────────────────────────────
+// Sync iter: metadata fields as [k, v] pairs.
+// Async iter: body chunks.
+
+if (typeof Response !== 'undefined') {
+  define(Response.prototype, Symbol.iterator, function* iterator() {
+    yield ['url',        this.url];
+    yield ['status',     this.status];
+    yield ['statusText', this.statusText];
+    yield ['ok',         this.ok];
+    yield ['redirected', this.redirected];
+    yield ['type',       this.type];
+    yield ['headers',    this.headers];
+    yield ['bodyUsed',   this.bodyUsed];
+  });
+
+  define(Response.prototype, Symbol.asyncIterator, async function* iterator() {
+    if (!this.body) return;
+    const reader = this.body.getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  });
+}
+
+// ─── URL ──────────────────────────────────────────────────────────────────────
+// Yields URL components as [k, v] pairs. Same shape as Object iter.
+
+if (typeof URL !== 'undefined') {
+  define(URL.prototype, Symbol.iterator, function* iterator() {
+    yield ['href',     this.href];
+    yield ['origin',   this.origin];
+    yield ['protocol', this.protocol];
+    yield ['username', this.username];
+    yield ['password', this.password];
+    yield ['host',     this.host];
+    yield ['hostname', this.hostname];
+    yield ['port',     this.port];
+    yield ['pathname', this.pathname];
+    yield ['search',   this.search];
+    yield ['hash',     this.hash];
+  });
+}
+
+// ─── Event ────────────────────────────────────────────────────────────────────
+// Yields key event fields as [k, v] pairs.
+
+if (typeof Event !== 'undefined') {
+  define(Event.prototype, Symbol.iterator, function* iterator() {
+    yield ['type',        this.type];
+    yield ['target',      this.target];
+    yield ['currentTarget',this.currentTarget];
+    yield ['bubbles',     this.bubbles];
+    yield ['cancelable',  this.cancelable];
+    yield ['defaultPrevented', this.defaultPrevented];
+    yield ['composed',    this.composed];
+    yield ['timeStamp',   this.timeStamp];
+    yield ['isTrusted',   this.isTrusted];
+  });
+}
+
+// ─── MessageEvent ─────────────────────────────────────────────────────────────
+// Extends Event — yields MessageEvent-specific fields after super fields.
+
+if (typeof MessageEvent !== 'undefined') {
+  define(MessageEvent.prototype, Symbol.iterator, function* iterator() {
+    yield* Event.prototype[Symbol.iterator].call(this); // super fields first
+    yield ['data',   this.data];
+    yield ['origin', this.origin];
+    yield ['source', this.source];
+    yield ['ports',  this.ports];
+  });
+}
+
+// ─── AbortSignal ──────────────────────────────────────────────────────────────
+// Yields aborted state and reason.
+
+if (typeof AbortSignal !== 'undefined') {
+  define(AbortSignal.prototype, Symbol.iterator, function* iterator() {
+    yield ['aborted', this.aborted];
+    yield ['reason',  this.reason];
+  });
+}
