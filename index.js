@@ -27,7 +27,7 @@ function define(proto, symbol, fn) {
 // Yields [key, value] for all own enumerable string keys.
 // Placed first — all others inherit from Object.prototype, so their own
 // Symbol.iterator definitions shadow this one cleanly.
-define(Object.prototype, Symbol.iterator, function iterator* () {
+define(Object.prototype, Symbol.iterator, function* iterator () {
   for (const key of Object.keys(this)) {
     yield [key, this[key]];
   }
@@ -36,7 +36,7 @@ define(Object.prototype, Symbol.iterator, function iterator* () {
 // Creates Array(n) and iterates every slot, including holes.
 // Holes yield the HOLE sentinel so consumers can distinguish from undefined.
 
-define(Number.prototype, Symbol.iterator, function iterator* () {
+define(Number.prototype, Symbol.iterator, function* iterator () {
   const len = Math.abs(Math.floor(this.valueOf()));
   const arr = Array(len);
   for (let i = 0; i < len; i++) {
@@ -47,7 +47,7 @@ define(Number.prototype, Symbol.iterator, function iterator* () {
 // ─── BigInt ───────────────────────────────────────────────────────────────────
 // Same range semantics as Number.
 
-define(BigInt.prototype, Symbol.iterator, function iterator* () {
+define(BigInt.prototype, Symbol.iterator, function* iterator () {
   const len = this.valueOf() < 0n ? -this.valueOf() : this.valueOf();
   const arr = Array(Number(len));
   for (let i = 0; i < arr.length; i++) {
@@ -58,7 +58,7 @@ define(BigInt.prototype, Symbol.iterator, function iterator* () {
 // ─── Boolean ──────────────────────────────────────────────────────────────────
 // Yields the boolean value once. Trivial but consistent — everything iterates.
 
-define(Boolean.prototype, Symbol.iterator, function iterator* () {
+define(Boolean.prototype, Symbol.iterator, function* iterator () {
   yield this.valueOf();
 });
 
@@ -66,7 +66,7 @@ define(Boolean.prototype, Symbol.iterator, function iterator* () {
 // Yields [pattern, bool] first (false if pattern is falsy, empty, or throws),
 // then yields each active flag character individually.
 
-define(RegExp.prototype, Symbol.iterator, function iterator* () {
+define(RegExp.prototype, Symbol.iterator, function* iterator () {
   let pattern, ok;
   try {
     pattern = this.source;
@@ -85,7 +85,7 @@ define(RegExp.prototype, Symbol.iterator, function iterator* () {
 // ─── Date ─────────────────────────────────────────────────────────────────────
 // Yields labelled date components as [field, value] pairs.
 
-define(Date.prototype, Symbol.iterator, function iterator* () {
+define(Date.prototype, Symbol.iterator, function* iterator () {
   yield ['year',        this.getFullYear()];
   yield ['month',       this.getMonth()];      // 0-indexed, matches Date API
   yield ['day',         this.getDate()];
@@ -100,7 +100,7 @@ define(Date.prototype, Symbol.iterator, function iterator* () {
 // Reflect.ownKeys catches non-enumerable props (stack on V8) + Symbols.
 // Yields [key, value] — same shape as Object iterator but broader key set.
 
-define(Error.prototype, Symbol.iterator, function* () {
+define(Error.prototype, Symbol.iterator, function* iterator() {
   for (const key of Reflect.ownKeys(this)) {
     yield [key, this[key]];
   }
@@ -112,7 +112,7 @@ define(Error.prototype, Symbol.iterator, function* () {
 // Does NOT handle destructured params or defaults containing commas — those
 // need a real parser (acorn etc). Yields raw param token strings in that case.
 
-define(Function.prototype, Symbol.iterator, function iterator* () {
+define(Function.prototype, Symbol.iterator, function* iterator () {
   const src = this.toString();
   const match = src.match(/^[^(]*\(([^)]*)\)/s);
   if (!match || !match[1].trim()) return;
@@ -125,14 +125,14 @@ define(Function.prototype, Symbol.iterator, function iterator* () {
 // ─── ArrayBuffer ──────────────────────────────────────────────────────────────
 // Yields each byte as an unsigned integer via a Uint8Array view.
 
-define(ArrayBuffer.prototype, Symbol.iterator, function iterator* () {
+define(ArrayBuffer.prototype, Symbol.iterator, function* iterator () {
   yield* new Uint8Array(this);
 });
 
 // ─── DataView ─────────────────────────────────────────────────────────────────
 // Yields each byte in the view's range (respects byteOffset + byteLength).
 
-define(DataView.prototype, Symbol.iterator, function iterator* () {
+define(DataView.prototype, Symbol.iterator, function* iterator () {
   for (let i = 0; i < this.byteLength; i++) {
     yield this.getUint8(i);
   }
@@ -144,7 +144,7 @@ define(DataView.prototype, Symbol.iterator, function iterator* () {
 //   - delegates to resolved value's own sync iterator if present
 //   - otherwise yields the resolved value once
 
-define(Promise.prototype, Symbol.asyncIterator, async function iterator* () {
+define(Promise.prototype, Symbol.asyncIterator, async function* iterator () {
   const val = await this;
   if (val != null && val[Symbol.asyncIterator]) {
     yield* val[Symbol.asyncIterator]();
