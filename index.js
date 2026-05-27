@@ -27,7 +27,7 @@ function define(proto, symbol, fn) {
 // Yields [key, value] for all own enumerable string keys.
 // Placed first — all others inherit from Object.prototype, so their own
 // Symbol.iterator definitions shadow this one cleanly.
-define(Object.prototype, Symbol.iterator, function* iterator () {
+define(Object.prototype, Symbol.iterator, function* iterator() {
   for (const key of Object.keys(this)) {
     yield [key, this[key]];
   }
@@ -36,7 +36,7 @@ define(Object.prototype, Symbol.iterator, function* iterator () {
 // Creates Array(n) and iterates every slot, including holes.
 // Holes yield the HOLE sentinel so consumers can distinguish from undefined.
 
-define(Number.prototype, Symbol.iterator, function* iterator () {
+define(Number.prototype, Symbol.iterator, function* iterator() {
   const len = Math.abs(Math.floor(this.valueOf()));
   const arr = Array(len);
   for (let i = 0; i < len; i++) {
@@ -47,7 +47,7 @@ define(Number.prototype, Symbol.iterator, function* iterator () {
 // ─── BigInt ───────────────────────────────────────────────────────────────────
 // Same range semantics as Number.
 
-define(BigInt.prototype, Symbol.iterator, function* iterator () {
+define(BigInt.prototype, Symbol.iterator, function* iterator() {
   const len = this.valueOf() < 0n ? -this.valueOf() : this.valueOf();
   const arr = Array(Number(len));
   for (let i = 0; i < arr.length; i++) {
@@ -58,7 +58,7 @@ define(BigInt.prototype, Symbol.iterator, function* iterator () {
 // ─── Boolean ──────────────────────────────────────────────────────────────────
 // Yields the boolean value once. Trivial but consistent — everything iterates.
 
-define(Boolean.prototype, Symbol.iterator, function* iterator () {
+define(Boolean.prototype, Symbol.iterator, function* iterator() {
   yield this.valueOf();
 });
 
@@ -66,7 +66,7 @@ define(Boolean.prototype, Symbol.iterator, function* iterator () {
 // Yields [pattern, bool] first (false if pattern is falsy, empty, or throws),
 // then yields each active flag character individually.
 
-define(RegExp.prototype, Symbol.iterator, function* iterator () {
+define(RegExp.prototype, Symbol.iterator, function* iterator() {
   let pattern, ok;
   try {
     pattern = this.source;
@@ -85,15 +85,15 @@ define(RegExp.prototype, Symbol.iterator, function* iterator () {
 // ─── Date ─────────────────────────────────────────────────────────────────────
 // Yields labelled date components as [field, value] pairs.
 
-define(Date.prototype, Symbol.iterator, function* iterator () {
-  yield ['year',        this.getFullYear()];
-  yield ['month',       this.getMonth()];      // 0-indexed, matches Date API
-  yield ['day',         this.getDate()];
-  yield ['hours',       this.getHours()];
-  yield ['minutes',     this.getMinutes()];
-  yield ['seconds',     this.getSeconds()];
-  yield ['milliseconds',this.getMilliseconds()];
-  yield ['timestamp',   this.getTime()];
+define(Date.prototype, Symbol.iterator, function* iterator() {
+  yield ['year', this.getFullYear()];
+  yield ['month', this.getMonth()]; // 0-indexed, matches Date API
+  yield ['day', this.getDate()];
+  yield ['hours', this.getHours()];
+  yield ['minutes', this.getMinutes()];
+  yield ['seconds', this.getSeconds()];
+  yield ['milliseconds', this.getMilliseconds()];
+  yield ['timestamp', this.getTime()];
 });
 
 // ─── Error ────────────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ define(Error.prototype, Symbol.iterator, function* iterator() {
 // Does NOT handle destructured params or defaults containing commas — those
 // need a real parser (acorn etc). Yields raw param token strings in that case.
 
-define(Function.prototype, Symbol.iterator, function* iterator () {
+define(Function.prototype, Symbol.iterator, function* iterator() {
   const src = this.toString();
   const match = src.match(/^[^(]*\(([^)]*)\)/s);
   if (!match || !match[1].trim()) return;
@@ -125,14 +125,14 @@ define(Function.prototype, Symbol.iterator, function* iterator () {
 // ─── ArrayBuffer ──────────────────────────────────────────────────────────────
 // Yields each byte as an unsigned integer via a Uint8Array view.
 
-define(ArrayBuffer.prototype, Symbol.iterator, function* iterator () {
+define(ArrayBuffer.prototype, Symbol.iterator, function* iterator() {
   yield* new Uint8Array(this);
 });
 
 // ─── DataView ─────────────────────────────────────────────────────────────────
 // Yields each byte in the view's range (respects byteOffset + byteLength).
 
-define(DataView.prototype, Symbol.iterator, function* iterator () {
+define(DataView.prototype, Symbol.iterator, function* iterator() {
   for (let i = 0; i < this.byteLength; i++) {
     yield this.getUint8(i);
   }
@@ -144,7 +144,7 @@ define(DataView.prototype, Symbol.iterator, function* iterator () {
 //   - delegates to resolved value's own sync iterator if present
 //   - otherwise yields the resolved value once
 
-define(Promise.prototype, Symbol.asyncIterator, async function* iterator () {
+define(Promise.prototype, Symbol.asyncIterator, async function* iterator() {
   const val = await this;
   if (val != null && val[Symbol.asyncIterator]) {
     yield* val[Symbol.asyncIterator]();
@@ -158,7 +158,6 @@ define(Promise.prototype, Symbol.asyncIterator, async function* iterator () {
 // ─── WeakMap / WeakSet ────────────────────────────────────────────────────────
 // Intentionally NOT patched. Non-iterability is load-bearing for GC semantics.
 // Adding iteration would require retaining all keys — defeats the purpose.
-
 
 /**
  * oprah-iterator/whatwg
@@ -200,7 +199,10 @@ if (typeof ReadableStream !== 'undefined') {
       const reader = this.getReader();
       try {
         while (true) {
-          const { value, done } = await reader.read();
+          const {
+            value,
+            done
+          } = await reader.read();
           if (done) return;
           yield value;
         }
@@ -225,7 +227,10 @@ if (typeof Blob !== 'undefined') {
     const reader = this.stream().getReader();
     try {
       while (true) {
-        const { value, done } = await reader.read();
+        const {
+          value,
+          done
+        } = await reader.read();
         if (done) return;
         yield value;
       }
@@ -245,15 +250,15 @@ if (typeof Blob !== 'undefined') {
 
 if (typeof Request !== 'undefined') {
   define(Request.prototype, Symbol.iterator, function* iterator() {
-    yield ['url',         this.url];
-    yield ['method',      this.method];
-    yield ['mode',        this.mode];
+    yield ['url', this.url];
+    yield ['method', this.method];
+    yield ['mode', this.mode];
     yield ['credentials', this.credentials];
-    yield ['cache',       this.cache];
-    yield ['redirect',    this.redirect];
-    yield ['referrer',    this.referrer];
-    yield ['headers',     this.headers];
-    yield ['bodyUsed',    this.bodyUsed];
+    yield ['cache', this.cache];
+    yield ['redirect', this.redirect];
+    yield ['referrer', this.referrer];
+    yield ['headers', this.headers];
+    yield ['bodyUsed', this.bodyUsed];
   });
 
   define(Request.prototype, Symbol.asyncIterator, async function* iterator() {
@@ -261,7 +266,10 @@ if (typeof Request !== 'undefined') {
     const reader = this.body.getReader();
     try {
       while (true) {
-        const { value, done } = await reader.read();
+        const {
+          value,
+          done
+        } = await reader.read();
         if (done) return;
         yield value;
       }
@@ -277,14 +285,14 @@ if (typeof Request !== 'undefined') {
 
 if (typeof Response !== 'undefined') {
   define(Response.prototype, Symbol.iterator, function* iterator() {
-    yield ['url',        this.url];
-    yield ['status',     this.status];
+    yield ['url', this.url];
+    yield ['status', this.status];
     yield ['statusText', this.statusText];
-    yield ['ok',         this.ok];
+    yield ['ok', this.ok];
     yield ['redirected', this.redirected];
-    yield ['type',       this.type];
-    yield ['headers',    this.headers];
-    yield ['bodyUsed',   this.bodyUsed];
+    yield ['type', this.type];
+    yield ['headers', this.headers];
+    yield ['bodyUsed', this.bodyUsed];
   });
 
   define(Response.prototype, Symbol.asyncIterator, async function* iterator() {
@@ -292,7 +300,10 @@ if (typeof Response !== 'undefined') {
     const reader = this.body.getReader();
     try {
       while (true) {
-        const { value, done } = await reader.read();
+        const {
+          value,
+          done
+        } = await reader.read();
         if (done) return;
         yield value;
       }
@@ -307,17 +318,17 @@ if (typeof Response !== 'undefined') {
 
 if (typeof URL !== 'undefined') {
   define(URL.prototype, Symbol.iterator, function* iterator() {
-    yield ['href',     this.href];
-    yield ['origin',   this.origin];
+    yield ['href', this.href];
+    yield ['origin', this.origin];
     yield ['protocol', this.protocol];
     yield ['username', this.username];
     yield ['password', this.password];
-    yield ['host',     this.host];
+    yield ['host', this.host];
     yield ['hostname', this.hostname];
-    yield ['port',     this.port];
+    yield ['port', this.port];
     yield ['pathname', this.pathname];
-    yield ['search',   this.search];
-    yield ['hash',     this.hash];
+    yield ['search', this.search];
+    yield ['hash', this.hash];
   });
 }
 
@@ -326,15 +337,15 @@ if (typeof URL !== 'undefined') {
 
 if (typeof Event !== 'undefined') {
   define(Event.prototype, Symbol.iterator, function* iterator() {
-    yield ['type',        this.type];
-    yield ['target',      this.target];
-    yield ['currentTarget',this.currentTarget];
-    yield ['bubbles',     this.bubbles];
-    yield ['cancelable',  this.cancelable];
+    yield ['type', this.type];
+    yield ['target', this.target];
+    yield ['currentTarget', this.currentTarget];
+    yield ['bubbles', this.bubbles];
+    yield ['cancelable', this.cancelable];
     yield ['defaultPrevented', this.defaultPrevented];
-    yield ['composed',    this.composed];
-    yield ['timeStamp',   this.timeStamp];
-    yield ['isTrusted',   this.isTrusted];
+    yield ['composed', this.composed];
+    yield ['timeStamp', this.timeStamp];
+    yield ['isTrusted', this.isTrusted];
   });
 }
 
@@ -344,10 +355,10 @@ if (typeof Event !== 'undefined') {
 if (typeof MessageEvent !== 'undefined') {
   define(MessageEvent.prototype, Symbol.iterator, function* iterator() {
     yield* Event.prototype[Symbol.iterator].call(this); // super fields first
-    yield ['data',   this.data];
+    yield ['data', this.data];
     yield ['origin', this.origin];
     yield ['source', this.source];
-    yield ['ports',  this.ports];
+    yield ['ports', this.ports];
   });
 }
 
@@ -357,6 +368,6 @@ if (typeof MessageEvent !== 'undefined') {
 if (typeof AbortSignal !== 'undefined') {
   define(AbortSignal.prototype, Symbol.iterator, function* iterator() {
     yield ['aborted', this.aborted];
-    yield ['reason',  this.reason];
+    yield ['reason', this.reason];
   });
 }
